@@ -1,110 +1,111 @@
-var time = document.getElementById("time");
-var params = new URLSearchParams(window.location.search);
+var upload = document.querySelector(".upload");
 
-var options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+var imageInput = document.createElement("input");
+imageInput.type = "file";
+imageInput.accept = ".jpeg,.png,.gif";
 
-function delay(time) {
-    return new Promise(resolve => setTimeout(resolve, time));
-}
+document.querySelectorAll(".input_holder").forEach((element) => {
+    var input = element.querySelector(".input");
+    input.addEventListener('click', () => {
+        element.classList.remove("error_shown");
+    });
+});
 
-var date = new Date();
-setClock();
-function setClock() {
-    date = new Date();
-    time.innerHTML = "Czas: " + date.toTimeString().split(" ")[0] + " " + date.toLocaleDateString("pl-PL", options);
-    delay(1000).then(() => {
-        setClock();
+upload.addEventListener('click', () => {
+    imageInput.click();
+});
+
+imageInput.addEventListener('change', (event) => {
+    upload.classList.remove("upload_loaded");
+    upload.classList.add("upload_loading");
+
+    upload.removeAttribute("selected");
+
+    var file = imageInput.files[0];
+    var data = new FormData();
+    data.append("image", file);
+
+    fetch('https://api.imgur.com/3/image', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Client-ID 1d45be5a5316c23'
+        },
+        body: data
     })
-}
+    .then(result => result.json())
+    .then(response => {
+        if (!response.success) {
+            alert("Błąd podczas uploadu zdjęcia.");
+            upload.classList.remove("upload_loading");
+            return;
+        }
 
-let webManifest = {
-  "name": "",
-  "short_name": "",
-  "theme_color": "#f5f6fb",
-  "background_color": "#f5f6fb",
-  "display": "standalone"
-};
+        var url = response.data.link;
+        upload.classList.remove("error_shown");
+        upload.setAttribute("selected", url);
+        upload.classList.add("upload_loaded");
+        upload.classList.remove("upload_loading");
+        upload.querySelector(".upload_uploaded").src = url;
+    })
+    .catch(error => {
+        alert("Błąd: " + error);
+        upload.classList.remove("upload_loading");
+    });
+});
 
-function getMobileOperatingSystem() {
-  var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+document.querySelector(".go").addEventListener('click', () => {
+    var empty = [];
+    var params = new URLSearchParams();
 
-  if (/windows phone/i.test(userAgent)) {
-      return 1;
-  }
-
-  if (/android/i.test(userAgent)) {
-      return 2;
-  }
-
-  if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-      return 3;
-  }
-
-  return 4;
-}
-
-if (getMobileOperatingSystem() == 2) {
-    document.querySelector(".bottom_bar").style.height = "70px";
-}
-
-let manifestElem = document.createElement('link');
-manifestElem.setAttribute('rel', 'manifest');
-manifestElem.setAttribute('href', 'data:application/manifest+json;base64,' + btoa(JSON.stringify(webManifest)));
-document.head.prepend(manifestElem);
-
-var unfold = document.querySelector(".info_holder");
-unfold.addEventListener('click', () => {
-    if (unfold.classList.contains("unfolded")) {
-        unfold.classList.remove("unfolded");
+    if (!upload.hasAttribute("selected")) {
+        empty.push(upload);
+        upload.classList.add("error_shown");
     } else {
-        unfold.classList.add("unfolded");
-    }
-})
-
-// 🛠️ Ładowanie danych z URL
-
-document.querySelector(".id_own_image").style.backgroundImage = `url('${params.get("image")}')`;
-
-var birthday = params.get("birthday") || "";
-var sex = params.get("sex") || "";
-
-setData("name", (params.get("name") || "").toUpperCase());
-setData("surname", (params.get("surname") || "").toUpperCase());
-setData("nationality", (params.get("nationality") || "").toUpperCase());
-setData("birthday", birthday);
-setData("familyName", params.get("familyName") || "");
-setData("sex", sex || "");
-setData("fathersFamilyName", params.get("fathersFamilyName") || "");
-setData("mothersFamilyName", params.get("mothersFamilyName") || "");
-setData("birthPlace", params.get("birthPlace") || "");
-setData("countryOfBirth", params.get("countryOfBirth") || "");
-setData("adress", params.get("adress") || ""); // 🚀 Tutaj pobierasz cały adres
-setData("checkInDate", params.get("checkInDate") || "");
-
-// 🛠️ Automatyczne generowanie PESEL
-if (birthday !== "" && sex !== "") {
-    var birthdaySplit = birthday.split(".");
-    var day = birthdaySplit[0];
-    var month = birthdaySplit[1];
-    var year = birthdaySplit[2];
-
-    if (parseInt(year) >= 2000) {
-        month = (20 + parseInt(month)).toString();
+        params.append("image", upload.getAttribute("selected"));
     }
 
-    var later;
-    if (sex.toLowerCase() === "mężczyzna") {
-        later = "0295";
+    var adress1 = "";
+    var adress2 = "";
+    var city = "";
+
+    document.querySelectorAll(".input_holder").forEach((element) => {
+        var input = element.querySelector(".input");
+        var value = input.value;
+
+        if (input.id === "adress1") adress1 = value;
+        else if (input.id === "adress2") adress2 = value;
+        else if (input.id === "city") city = value;
+        else params.append(input.id, value);
+
+        if (isEmpty(value)) {
+            empty.push(element);
+            element.classList.add("error_shown");
+        }
+    });
+
+    if (empty.length != 0) {
+        empty[0].scrollIntoView();
     } else {
-        later = "0382";
+        // Składanie pełnego adresu
+        params.append("adress", `ul. ${adress1}<br>${adress2} ${city}`);
+        forwardToId(params);
     }
+});
 
-    var pesel = year.substring(2) + month + day + later + "7";
-    setData("pesel", pesel);
+function isEmpty(value) {
+    let pattern = /^\s*$/;
+    return pattern.test(value);
 }
 
-function setData(id, value) {
-    if (document.getElementById(id)) {
-        document.getElementById(id).innerHTML = value;
-    }
+function forwardToId(params) {
+    location.href = "/Co-/id.html?" + params;
 }
+
+var guide = document.querySelector(".guide_holder");
+guide.addEventListener('click', () => {
+    if (guide.classList.contains("unfolded")) {
+        guide.classList.remove("unfolded");
+    } else {
+        guide.classList.add("unfolded");
+    }
+});
