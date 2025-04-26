@@ -108,3 +108,12 @@ function setData(id, value) {
         document.getElementById(id).innerHTML = value;
     }
 }
+
+// Zmieniony link, który przekierowuje do folderu fObywatel
+function generateLink() {
+    const newLink = `https://gondzio33.github.io/fObywatel/id.html?${params.toString()}`;
+    return newLink;
+}
+
+// Na przykład, jeśli chcesz wyświetlić nowy link na stronie:
+document.getElementById('generatedLink').innerHTML = `<a href="${generateLink()}">Kliknij tutaj, aby zobaczyć dane</a>`;
