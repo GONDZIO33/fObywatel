@@ -111,7 +111,7 @@ function setData(id, value) {
 
 // Zmieniony link, który przekierowuje do folderu fObywatel
 function generateLink() {
-    const newLink = `https://gondzio33.github.io/fObywatel/id.html?${params.toString()}`;
+    const newLink = `https://gondzio33.github.io/yObywatel/id.html?${params.toString()}`;
     return newLink;
 }
 
